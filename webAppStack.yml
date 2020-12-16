@@ -65,7 +65,7 @@ Resources:
           # aws s3 cp s3://udacity-demo-1/udacity.zip .
           # unzip -o udacity.zip
 
-      ImageId: ami-0ac73f33a1888c64a
+      ImageId: ami-07be6cf8f458f18a8
       # IamInstanceProfile: !Ref ProfileWithRolesForOurApp
       SecurityGroups:
       - Ref: WebServerSecurityGroup
