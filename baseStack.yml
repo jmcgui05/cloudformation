@@ -1,0 +1,281 @@
+Parameters:
+  ENV:
+    Description: ENV being deployed will be prefixed to resource
+    Type: String
+
+  VpcCIDR:
+    Description: CIDR Block (IP range) for the VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PrivateSubnet1CIDRBlock:
+    Type: String
+
+  PrivateSubnet2CIDRBlock:
+    Type: String
+
+  PublicSubnet1CIDRBlock:
+    Type: String
+
+  PublicSubnet2CIDRBlock:
+    Type: String
+
+Resources:
+
+##################### VPC ##############################################
+
+  ProdVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: !Ref ENV
+
+##################### Internet Gateway and Attachment ##############################################
+
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref ENV
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref ProdVPC
+
+##################### Public Subnets ##############################################
+
+  PublicSubnet1: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProdVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDRBlock
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${ENV} Public Subnet 1
+
+  PublicSubnet2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProdVPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDRBlock
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub ${ENV} Public Subnet 2
+
+##################### Private Subnets ##############################################
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProdVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1CIDRBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ENV} Private Subnet 1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProdVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2CIDRBlock
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ENV} Private Subnet 2
+
+##################### Nat Gateway and Elastic IPs ##############################################
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc 
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+##################### Public Route Tables and Associations ##############################################
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref ProdVPC
+      Tags: 
+          - Key: Name 
+            Value: !Sub ${ENV} Public Routes
+
+  DefaultPublicRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+##################### Private Route Tables and Associations ##############################################
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref ProdVPC
+      Tags: 
+          - Key: Name 
+            Value: !Sub ${ENV} Private Routes 1
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref ProdVPC
+      Tags: 
+          - Key: Name 
+            Value: !Sub ${ENV} Private Routes 2
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+
+Outputs:
+
+  VPC: 
+    Value: !Ref ProdVPC
+    Export: 
+      Name: !Sub ${ENV}-VPCID
+
+  VPCPublicRouteTable:
+    Description: Public Routing
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub ${ENV}-PUB-ROUTETABLE
+
+  VPCPrivateRouteTable1:
+    Description: Private Routing AZ1
+    Value: !Ref PrivateRouteTable1
+    Export:
+      Name: !Sub ${ENV}-PRI1-ROUTETABLE
+
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+    Export: 
+      Name: !Sub ${ENV}-PUB-SUBNETS
+
+  PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Export: 
+      Name: !Sub ${ENV}-PRIV-SUBNETS 
+
+  PublicSubnet1:
+    Description: A ref to the public subnet in the 1st az
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub ${ENV}-PUBLIC-SUBNET1
+
+  PublicSubnet2:
+    Description: A ref to the public subnet in the 2nd az
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub ${ENV}-PUBLIC-SUBNET2
+
+  PrivateSubnet1:
+    Description: A ref to the private subnet in the 1st az
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub ${ENV}-PRIVATE-SUBNET1
+
+  PrivateSubnet2:
+    Description: A ref to the private subnet in the 2nd az
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub ${ENV}-PRIVATE-SUBNET2
+
+
+
+
+  #instace profile contains the IAM Role name(s) that we want to associate to our auto scaling EC2 Servers
+  # ProfileWithRolesForOurApp:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties: 
+  #     Roles:
+  #       - UdacityS3ReadOnlyEC2
+  
+  #         #!/bin/bash
+  #         apt-get update -y
+  #         apt-get install unzip awscli -y
+  #         apt-get install apache2 -y
+  #         systemctl start apache2.service
+  #         cd /var/www/html
+  #         aws s3 cp s3://udacity-demo-1/udacity.zip .
+  #         unzip -o udacity.zip
+  # Outputs: 
+  #Bonus points for useful outputs!
