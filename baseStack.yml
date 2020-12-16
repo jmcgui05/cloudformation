@@ -1,3 +1,6 @@
+Description:
+  John McGuirk Base Stack
+
 Parameters:
   ENV:
     Description: ENV being deployed will be prefixed to resource
