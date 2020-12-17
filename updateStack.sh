@@ -3,4 +3,5 @@ aws cloudformation update-stack \
 --template-body file://$2 \
 --parameters file://$3 \
 --region=us-west-2 \
---profile $4
+--profile $4 \
+--capabilities CAPABILITY_IAM
