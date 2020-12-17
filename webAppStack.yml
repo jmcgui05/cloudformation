@@ -168,3 +168,12 @@ Resources:
       Path: /
       Roles:
         - !Ref RootRole
+
+##################### Outputs ##############################################
+
+Outputs:
+  WebUrl:
+    Description: An endpoint to test the app
+    Value: !Join ["", [http://, !GetAtt WebAppLB.DNSName]]
+    Export: 
+      Name: !Sub ${ENV}-URL
