@@ -23,3 +23,6 @@ workflows:
       - print-world:
           requires:
             - print-hello
+      - print-var:
+          requires:
+            - print-world
