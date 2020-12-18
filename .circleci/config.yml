@@ -14,11 +14,7 @@ jobs:
     docker:
       - image: circleci/node:13.8.0
     steps:
-      - checkout
-      - run: 
-          name: "echo an env var in the project"
-          command: |
-            echo $MY_NAME
+      - run: echo "export MY_NAME=$MY_NAME" >> $BASH_ENV
 workflows:
   welcome:
     jobs:
