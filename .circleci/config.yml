@@ -2,13 +2,13 @@ version: 2.1
 jobs:
   my_job:
     docker:
-      - image: amazon/aws-cli
+      - image: cimg/base:2020.01
     steps:
       - checkout
       - run:
-          name: Ensure backend infra exist
+          name: Test env var print
           command: |
-            aws cloudformation deploy --template-file test.cfn.yml --stack-name testStack
+            echo $MY_NAME
 workflows:
   testing:
     jobs:
